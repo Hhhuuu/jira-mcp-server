@@ -7,7 +7,16 @@ from .exceptions import (
     JiraIssueNotFoundError,
     JiraRequestError,
 )
-from .models import JiraIssueResponse, JiraProjectRef, JiraSearchResponse, JiraUserRef
+from .models import (
+    JiraCommentResponse,
+    JiraCreateFieldsResponse,
+    JiraCreateIssueResponse,
+    JiraCreateIssueTypesResponse,
+    JiraIssueResponse,
+    JiraProjectRef,
+    JiraSearchResponse,
+    JiraUserRef,
+)
 
 __all__ = [
     "JiraAuthenticationError",
@@ -16,6 +25,10 @@ __all__ = [
     "JiraClientError",
     "JiraIssueNotFoundError",
     "JiraIssueResponse",
+    "JiraCommentResponse",
+    "JiraCreateFieldsResponse",
+    "JiraCreateIssueResponse",
+    "JiraCreateIssueTypesResponse",
     "JiraProjectRef",
     "JiraRequestError",
     "JiraSearchResponse",

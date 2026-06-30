@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from jira_readonly_service import JiraReadonlyService, load_app_config, load_secrets
+from jira_write_service import JiraWriteService
 
 
 def resolve_project_root() -> Path:
@@ -37,3 +38,9 @@ def load_runtime_service() -> JiraReadonlyService:
     app_config = load_app_config(resolve_config_path())
     secrets = load_secrets(resolve_secrets_path())
     return JiraReadonlyService.from_config(app_config, secrets)
+
+
+def load_runtime_write_service() -> JiraWriteService:
+    app_config = load_app_config(resolve_config_path())
+    secrets = load_secrets(resolve_secrets_path())
+    return JiraWriteService.from_config(app_config, secrets)

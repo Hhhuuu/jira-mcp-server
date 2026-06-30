@@ -11,6 +11,7 @@ python -m pip install --upgrade pip setuptools wheel
 python -m pip install --no-build-isolation \
   -e jira-client \
   -e jira-readonly-service \
+  -e jira-write-service \
   -e jira-mcp-server
 ```
 
@@ -39,6 +40,7 @@ python -m pip install --upgrade pip setuptools wheel
 python -m pip install --no-build-isolation \
   -e jira-client \
   -e jira-readonly-service \
+  -e jira-write-service \
   -e jira-mcp-server
 ```
 

@@ -1,3 +1,4 @@
 -e ../jira-client
 -e ../jira-readonly-service
+-e ../jira-write-service
 -e .

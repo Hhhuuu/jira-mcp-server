@@ -4,6 +4,7 @@
 
 - `jira-client` — клиент для Jira REST API
 - `jira-readonly-service` — read-only use case слой
+- `jira-write-service` — write use case слой
 - `jira-mcp-server` — HTTP API и MCP transport
 - `config` — прикладной конфиг
 - `secrets` — секреты подключения
@@ -34,6 +35,14 @@
 - `POST /api/v1/filters`
 - `DELETE /api/v1/filters?filter_name=...`
 - `GET /api/v1/filters/search?filter_name=...&year=2026`
+- `GET /api/v1/project/issue-types?project_key=...`
+- `GET /api/v1/project/create-fields?project_key=...&issue_type=...`
+- `POST /api/v1/issue/create`
+- `POST /api/v1/issue/comment`
+- `POST /api/v1/issue/comment/update`
+- `POST /api/v1/issue/description`
+- `POST /api/v1/issue/labels`
+- `POST /api/v1/issue/fields`
 - MCP tool `show_runtime_config`
 - MCP tool `get_current_user`
 - MCP tool `get_jira_issue`
@@ -43,6 +52,14 @@
 - MCP tool `save_jql_filter`
 - MCP tool `delete_jql_filter`
 - MCP tool `search_jira_by_saved_filter`
+- MCP tool `get_jira_create_issue_types`
+- MCP tool `get_jira_create_issue_fields`
+- MCP tool `create_jira_issue`
+- MCP tool `add_jira_comment`
+- MCP tool `update_jira_comment`
+- MCP tool `update_jira_description`
+- MCP tool `update_jira_labels`
+- MCP tool `update_jira_fields`
 
 ## Быстрый smoke-test
 
@@ -68,6 +85,43 @@ curl "http://127.0.0.1:8000/api/v1/issue?issue_key=PROJ-123"
 
 ```bash
 curl "http://127.0.0.1:8000/api/v1/filters/search?filter_name=my_team&year=2026"
+```
+
+Проверка create metadata:
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/project/issue-types?project_key=KAN"
+curl "http://127.0.0.1:8000/api/v1/project/create-fields?project_key=KAN&issue_type=Задача"
+```
+
+Создание задачи:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/issue/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_key": "KAN",
+    "summary": "Пример задачи из API",
+    "issue_type": "Задача",
+    "description": "Описание новой задачи",
+    "labels": ["python-mcp"]
+  }'
+```
+
+Обновление описания, labels и комментариев:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/issue/description \
+  -H "Content-Type: application/json" \
+  -d '{"issue_ref":"KAN-4","description":"Новое описание"}'
+
+curl -X POST http://127.0.0.1:8000/api/v1/issue/labels \
+  -H "Content-Type: application/json" \
+  -d '{"issue_ref":"KAN-4","add_labels":["verified"]}'
+
+curl -X POST http://127.0.0.1:8000/api/v1/issue/comment \
+  -H "Content-Type: application/json" \
+  -d '{"issue_ref":"KAN-4","comment":"Комментарий из API"}'
 ```
 
 ## Сохранённые фильтры

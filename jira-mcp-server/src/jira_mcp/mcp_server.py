@@ -5,9 +5,10 @@ from __future__ import annotations
 import os
 
 from jira_readonly_service import JiraFilterService, JiraReadonlyService, load_app_config, save_app_config
+from jira_write_service import JiraWriteService
 from mcp.server.fastmcp import FastMCP
 
-from .runtime import load_runtime_service, resolve_config_path, resolve_secrets_path
+from .runtime import load_runtime_service, load_runtime_write_service, resolve_config_path, resolve_secrets_path
 
 mcp = FastMCP(
     name="jira-readonly",
@@ -132,6 +133,118 @@ def search_jira_by_saved_filter(filter_name: str, year: int | None = None, max_r
         jql,
         max_results=max_results,
         start_at=start_at,
+    )
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="get_jira_create_issue_types",
+    description="Показать доступные issue types для создания задачи в проекте Jira.",
+)
+def get_jira_create_issue_types(project_key: str) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.get_create_issue_types(project_key)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="get_jira_create_issue_fields",
+    description="Показать поля, доступные для создания Jira issue в проекте и issue type.",
+)
+def get_jira_create_issue_fields(project_key: str, issue_type: str) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.get_create_issue_fields(project_key, issue_type)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="create_jira_issue",
+    description="Создать Jira issue с заданным project, summary, issue type, labels и дополнительными полями.",
+)
+def create_jira_issue(
+    project_key: str,
+    summary: str,
+    issue_type: str,
+    description: str | None = None,
+    labels: list[str] | None = None,
+    parent_issue_key: str | None = None,
+    custom_fields: dict | None = None,
+    fields: dict | None = None,
+) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.create_issue(
+        project_key,
+        summary,
+        issue_type,
+        description=description,
+        labels=labels,
+        parent_issue_key=parent_issue_key,
+        custom_fields=custom_fields,
+        fields=fields,
+    )
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="add_jira_comment",
+    description="Добавить комментарий к Jira issue.",
+)
+def add_jira_comment(issue_ref: str, comment: str) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.add_comment(issue_ref, comment)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="update_jira_comment",
+    description="Обновить существующий комментарий Jira.",
+)
+def update_jira_comment(issue_ref: str, comment_id: str, comment: str) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.update_comment(issue_ref, comment_id, comment)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="update_jira_description",
+    description="Обновить описание Jira issue.",
+)
+def update_jira_description(issue_ref: str, description: str) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.update_issue_description(issue_ref, description)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="update_jira_labels",
+    description="Добавить, удалить или заменить labels у Jira issue.",
+)
+def update_jira_labels(
+    issue_ref: str,
+    add_labels: list[str] | None = None,
+    remove_labels: list[str] | None = None,
+    set_labels: list[str] | None = None,
+) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.update_issue_labels(
+        issue_ref,
+        add_labels=add_labels,
+        remove_labels=remove_labels,
+        set_labels=set_labels,
+    )
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="update_jira_fields",
+    description="Обновить произвольные поля Jira issue, включая customfield_*.",
+)
+def update_jira_fields(issue_ref: str, fields: dict | None = None, custom_fields: dict | None = None) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.update_issue_fields(
+        issue_ref,
+        fields=fields,
+        custom_fields=custom_fields,
     )
     return result.model_dump(mode="json")
 

@@ -3,17 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jira-mcp-server"
+name = "jira-write-service"
 version = "0.1.0"
-description = "HTTP API и MCP-сервер для read-only Jira сценариев"
+description = "Write use case слой для Jira: создание задач, комментарии и обновление полей"
 requires-python = ">=3.10"
 dependencies = [
+    "jira-client",
     "jira-readonly-service",
-    "jira-write-service",
     "pydantic>=2.7",
-    "fastapi>=0.115",
-    "uvicorn>=0.30",
-    "mcp>=1.28.1",
 ]
 
 [tool.setuptools]

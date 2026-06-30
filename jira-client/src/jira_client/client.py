@@ -14,7 +14,17 @@ from .exceptions import (
     JiraIssueNotFoundError,
     JiraRequestError,
 )
-from .models import JiraErrorResponse, JiraIssueResponse, JiraProjectRef, JiraSearchResponse, JiraUserRef
+from .models import (
+    JiraCommentResponse,
+    JiraCreateFieldsResponse,
+    JiraCreateIssueResponse,
+    JiraCreateIssueTypesResponse,
+    JiraErrorResponse,
+    JiraIssueResponse,
+    JiraProjectRef,
+    JiraSearchResponse,
+    JiraUserRef,
+)
 
 DEFAULT_FIELDS = ",".join(
     [
@@ -159,6 +169,87 @@ class JiraClient:
 
         response = self._request("GET", search_path, params=params)
         return JiraSearchResponse.model_validate(response.json())
+
+    def get_create_issue_types(self, project_key: str) -> JiraCreateIssueTypesResponse:
+        """
+        Получить доступные issue types для создания в проекте.
+        """
+
+        response = self._request(
+            "GET",
+            f"/rest/api/{self._config.api_version}/issue/createmeta/{quote(project_key, safe='')}/issuetypes",
+        )
+        return JiraCreateIssueTypesResponse.model_validate(response.json())
+
+    def get_create_issue_fields(self, project_key: str, issue_type_id: str) -> JiraCreateFieldsResponse:
+        """
+        Получить поля, доступные для создания issue в проекте и issue type.
+        """
+
+        response = self._request(
+            "GET",
+            f"/rest/api/{self._config.api_version}/issue/createmeta/{quote(project_key, safe='')}/issuetypes/{quote(issue_type_id, safe='')}",
+        )
+        return JiraCreateFieldsResponse.model_validate(response.json())
+
+    def create_issue(self, fields: Dict[str, Any]) -> JiraCreateIssueResponse:
+        """
+        Создать Jira issue.
+        """
+
+        response = self._request(
+            "POST",
+            f"/rest/api/{self._config.api_version}/issue",
+            json={"fields": fields},
+        )
+        return JiraCreateIssueResponse.model_validate(response.json())
+
+    def edit_issue(
+        self,
+        issue_key: str,
+        *,
+        fields: Optional[Dict[str, Any]] = None,
+        update: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """
+        Обновить issue через fields/update.
+        """
+
+        payload: Dict[str, Any] = {}
+        if fields:
+            payload["fields"] = fields
+        if update:
+            payload["update"] = update
+
+        self._request(
+            "PUT",
+            f"/rest/api/{self._config.api_version}/issue/{quote(issue_key, safe='')}",
+            json=payload,
+        )
+
+    def add_comment(self, issue_key: str, body: Any) -> JiraCommentResponse:
+        """
+        Добавить комментарий к issue.
+        """
+
+        response = self._request(
+            "POST",
+            f"/rest/api/{self._config.api_version}/issue/{quote(issue_key, safe='')}/comment",
+            json={"body": body},
+        )
+        return JiraCommentResponse.model_validate(response.json())
+
+    def update_comment(self, issue_key: str, comment_id: str, body: Any) -> JiraCommentResponse:
+        """
+        Обновить комментарий Jira.
+        """
+
+        response = self._request(
+            "PUT",
+            f"/rest/api/{self._config.api_version}/issue/{quote(issue_key, safe='')}/comment/{quote(comment_id, safe='')}",
+            json={"body": body},
+        )
+        return JiraCommentResponse.model_validate(response.json())
 
     def close(self) -> None:
         self._client.close()
