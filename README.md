@@ -255,9 +255,3 @@ jira:
 ```text
 (project = KAN) AND created >= "2026-01-01" AND created < "2027-01-01" ORDER BY updated DESC
 ```
-
-## Важно
-
-- `confluence-mcp-server` не трогаем
-- текущий `jira` не переписываем на месте
-- вся новая разработка идёт только в этой папке
