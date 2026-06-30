@@ -21,6 +21,46 @@
 - `EXTERNAL_CONSUMERS.md` — документация для внешних потребителей
 - `LOCAL_ENVIRONMENTS.md` — настройка локальных окружений
 
+## Docker
+
+Собрать образ:
+
+```bash
+docker build -t jira-mcp:local .
+```
+
+Запуск HTTP API:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e JIRA_RUNTIME_MODE=http-api \
+  -v "$(pwd)/config:/app/config:ro" \
+  -v "$(pwd)/secrets:/app/secrets:ro" \
+  jira-mcp:local
+```
+
+Запуск MCP over HTTP:
+
+```bash
+docker run --rm -p 8000:8000 \
+  -e JIRA_RUNTIME_MODE=mcp-http \
+  -e JIRA_MCP_HOST=0.0.0.0 \
+  -e JIRA_MCP_PORT=8000 \
+  -v "$(pwd)/config:/app/config:ro" \
+  -v "$(pwd)/secrets:/app/secrets:ro" \
+  jira-mcp:local
+```
+
+Запуск MCP stdio:
+
+```bash
+docker run --rm -i \
+  -e JIRA_RUNTIME_MODE=mcp-stdio \
+  -v "$(pwd)/config:/app/config:ro" \
+  -v "$(pwd)/secrets:/app/secrets:ro" \
+  jira-mcp:local
+```
+
 ## Принцип работы
 
 1. Сначала переносим клиент Jira
