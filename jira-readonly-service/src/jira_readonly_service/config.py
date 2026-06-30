@@ -28,6 +28,7 @@ class JiraAppConfig(BaseModel):
     deployment: str = "cloud"
     verify_ssl: bool = True
     filters: Dict[str, JiraSavedFilterConfig] = Field(default_factory=dict)
+    field_aliases: Dict[str, str] = Field(default_factory=dict)
 
 
 class AppConfig(BaseModel):

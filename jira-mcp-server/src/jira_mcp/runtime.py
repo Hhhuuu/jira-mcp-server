@@ -43,4 +43,4 @@ def load_runtime_service() -> JiraReadonlyService:
 def load_runtime_write_service() -> JiraWriteService:
     app_config = load_app_config(resolve_config_path())
     secrets = load_secrets(resolve_secrets_path())
-    return JiraWriteService.from_config(app_config, secrets)
+    return JiraWriteService.from_config(app_config, secrets, project_root=resolve_project_root())

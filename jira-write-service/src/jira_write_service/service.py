@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from jira_client import JiraClient, JiraClientConfig, JiraCreateFieldsResponse, JiraCreateIssueTypesResponse
 from jira_readonly_service import AppConfig, JiraSecrets
 
+from .markdown_adf import markdown_to_adf
 from .dto import (
     JiraCommentMutationResult,
     JiraCreateFieldsResult,
@@ -19,13 +21,29 @@ from .dto import (
 class JiraWriteService:
     """Write use case слой для Jira."""
 
-    def __init__(self, client: JiraClient, *, base_url: str, deployment: str) -> None:
+    def __init__(
+        self,
+        client: JiraClient,
+        *,
+        base_url: str,
+        deployment: str,
+        project_root: Path,
+        field_aliases: Dict[str, str],
+    ) -> None:
         self._client = client
         self._base_url = base_url.rstrip("/")
         self._deployment = deployment
+        self._project_root = project_root
+        self._field_aliases = dict(field_aliases)
 
     @classmethod
-    def from_config(cls, app_config: AppConfig, secrets: JiraSecrets) -> "JiraWriteService":
+    def from_config(
+        cls,
+        app_config: AppConfig,
+        secrets: JiraSecrets,
+        *,
+        project_root: Path | None = None,
+    ) -> "JiraWriteService":
         client = JiraClient(
             JiraClientConfig(
                 base_url=app_config.jira.base_url,
@@ -39,7 +57,13 @@ class JiraWriteService:
                 verify_ssl=app_config.jira.verify_ssl,
             )
         )
-        return cls(client, base_url=app_config.jira.base_url, deployment=app_config.jira.deployment)
+        return cls(
+            client,
+            base_url=app_config.jira.base_url,
+            deployment=app_config.jira.deployment,
+            project_root=project_root or Path.cwd(),
+            field_aliases=app_config.jira.field_aliases,
+        )
 
     def get_create_issue_types(self, project_key: str) -> JiraCreateIssueTypesResult:
         response = self._client.get_create_issue_types(project_key)
@@ -87,6 +111,8 @@ class JiraWriteService:
         issue_type: str,
         *,
         description: Optional[str] = None,
+        description_markdown: Optional[str] = None,
+        description_markdown_file: Optional[str] = None,
         labels: Optional[Sequence[str]] = None,
         parent_issue_key: Optional[str] = None,
         custom_fields: Optional[Dict[str, Any]] = None,
@@ -99,16 +125,21 @@ class JiraWriteService:
             "issuetype": {"id": issue_type_id},
         }
 
-        if description:
-            payload_fields["description"] = build_rich_text_value(description, deployment=self._deployment)
+        description_value = self._resolve_description_value(
+            description=description,
+            description_markdown=description_markdown,
+            description_markdown_file=description_markdown_file,
+        )
+        if description_value is not None:
+            payload_fields["description"] = description_value
         if labels:
             payload_fields["labels"] = list(labels)
         if parent_issue_key:
             payload_fields["parent"] = {"key": parent_issue_key}
         if custom_fields:
-            payload_fields.update(custom_fields)
+            payload_fields.update(self._apply_field_aliases(custom_fields))
         if fields:
-            payload_fields.update(fields)
+            payload_fields.update(self._apply_field_aliases(fields))
 
         created = self._client.create_issue(payload_fields)
         issue_url = build_issue_url(self._base_url, created.key)
@@ -127,10 +158,22 @@ class JiraWriteService:
             ),
         )
 
-    def update_issue_description(self, issue_ref: str, description: str) -> JiraIssueMutationResult:
+    def update_issue_description(
+        self,
+        issue_ref: str,
+        *,
+        description: Optional[str] = None,
+        description_markdown: Optional[str] = None,
+        description_markdown_file: Optional[str] = None,
+    ) -> JiraIssueMutationResult:
+        description_value = self._resolve_description_value(
+            description=description,
+            description_markdown=description_markdown,
+            description_markdown_file=description_markdown_file,
+        )
         self._client.edit_issue(
             issue_ref,
-            fields={"description": build_rich_text_value(description, deployment=self._deployment)},
+            fields={"description": description_value},
         )
         return JiraIssueMutationResult(
             operation="update_description",
@@ -148,9 +191,9 @@ class JiraWriteService:
     ) -> JiraIssueMutationResult:
         merged_fields: Dict[str, Any] = {}
         if fields:
-            merged_fields.update(fields)
+            merged_fields.update(self._apply_field_aliases(fields))
         if custom_fields:
-            merged_fields.update(custom_fields)
+            merged_fields.update(self._apply_field_aliases(custom_fields))
         self._client.edit_issue(issue_ref, fields=merged_fields)
         return JiraIssueMutationResult(
             operation="update_fields",
@@ -240,6 +283,39 @@ class JiraWriteService:
             f"Не удалось найти issue type '{issue_type}' для проекта {project_key}. "
             f"Сначала вызови get_create_issue_types."
         )
+
+    def _resolve_description_value(
+        self,
+        *,
+        description: Optional[str],
+        description_markdown: Optional[str],
+        description_markdown_file: Optional[str],
+    ) -> Any:
+        if description_markdown_file:
+            markdown_path = self._resolve_local_path(description_markdown_file)
+            markdown_text = markdown_path.read_text(encoding="utf-8")
+            return markdown_to_adf(markdown_text) if self._deployment == "cloud" else markdown_text
+        if description_markdown:
+            return markdown_to_adf(description_markdown) if self._deployment == "cloud" else description_markdown
+        if description is not None:
+            return build_rich_text_value(description, deployment=self._deployment)
+        raise ValueError("Нужно передать description, description_markdown или description_markdown_file.")
+
+    def _resolve_local_path(self, path_value: str) -> Path:
+        path = Path(path_value)
+        if path.is_absolute():
+            return path
+        candidate = self._project_root / path
+        if candidate.exists():
+            return candidate
+        return Path.cwd() / path
+
+    def _apply_field_aliases(self, values: Dict[str, Any]) -> Dict[str, Any]:
+        resolved: Dict[str, Any] = {}
+        for key, value in values.items():
+            resolved_key = self._field_aliases.get(key, key)
+            resolved[resolved_key] = value
+        return resolved
 
 
 def build_rich_text_value(value: Any, *, deployment: str) -> Any:

@@ -16,6 +16,11 @@
 
 - `PYTHON_MIGRATION_PLAN.md`
 
+## Дополнительная документация
+
+- `EXTERNAL_CONSUMERS.md` — документация для внешних потребителей
+- `LOCAL_ENVIRONMENTS.md` — настройка локальных окружений
+
 ## Принцип работы
 
 1. Сначала переносим клиент Jira
@@ -108,12 +113,29 @@ curl -X POST http://127.0.0.1:8000/api/v1/issue/create \
   }'
 ```
 
+Создание задачи с markdown-описанием из файла:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/issue/create \
+  -H "Content-Type: application/json" \
+  -d '{
+    "project_key": "KAN",
+    "summary": "Задача с markdown description",
+    "issue_type": "Задача",
+    "description_markdown_file": "tmp-description.md"
+  }'
+```
+
 Обновление описания, labels и комментариев:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/v1/issue/description \
   -H "Content-Type: application/json" \
   -d '{"issue_ref":"KAN-4","description":"Новое описание"}'
+
+curl -X POST http://127.0.0.1:8000/api/v1/issue/description \
+  -H "Content-Type: application/json" \
+  -d '{"issue_ref":"KAN-4","description_markdown_file":"tmp-description.md"}'
 
 curl -X POST http://127.0.0.1:8000/api/v1/issue/labels \
   -H "Content-Type: application/json" \
@@ -123,6 +145,49 @@ curl -X POST http://127.0.0.1:8000/api/v1/issue/comment \
   -H "Content-Type: application/json" \
   -d '{"issue_ref":"KAN-4","comment":"Комментарий из API"}'
 ```
+
+## Алиасы полей
+
+В `config/app.yaml` можно задать человекочитаемые алиасы для системных и custom полей:
+
+```yaml
+jira:
+  field_aliases:
+    start_date: customfield_10015
+    team: customfield_10001
+```
+
+После этого в `fields` или `custom_fields` можно передавать:
+
+```json
+{
+  "issue_ref": "KAN-4",
+  "custom_fields": {
+    "start_date": "2026-07-02"
+  }
+}
+```
+
+Сервис сам преобразует `start_date` в `customfield_10015`.
+
+## Markdown в description
+
+Для Jira Cloud поддерживаются:
+
+- `description` — обычный текст
+- `description_markdown` — markdown-строка
+- `description_markdown_file` — путь до markdown-файла
+
+Markdown сейчас конвертируется в ADF с поддержкой базовых конструкций:
+
+- заголовки
+- абзацы
+- списки
+- bold / italic
+- inline code
+- fenced code blocks
+- ссылки
+- blockquote
 
 ## Сохранённые фильтры
 

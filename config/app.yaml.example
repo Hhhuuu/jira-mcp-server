@@ -37,3 +37,9 @@ jira:
 
       # Шаблон JQL с параметрами {year} и {next_year}.
       jql_template: 'project = KAN AND created >= "{year}-01-01" AND created < "{next_year}-01-01" ORDER BY updated DESC'
+
+  # Человекочитаемые алиасы полей Jira.
+  # Позволяют не передавать голые customfield_* в API и MCP.
+  field_aliases:
+    start_date: "customfield_10015"
+    team: "customfield_10001"

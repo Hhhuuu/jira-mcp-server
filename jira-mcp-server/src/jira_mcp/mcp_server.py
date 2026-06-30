@@ -166,6 +166,8 @@ def create_jira_issue(
     summary: str,
     issue_type: str,
     description: str | None = None,
+    description_markdown: str | None = None,
+    description_markdown_file: str | None = None,
     labels: list[str] | None = None,
     parent_issue_key: str | None = None,
     custom_fields: dict | None = None,
@@ -177,6 +179,8 @@ def create_jira_issue(
         summary,
         issue_type,
         description=description,
+        description_markdown=description_markdown,
+        description_markdown_file=description_markdown_file,
         labels=labels,
         parent_issue_key=parent_issue_key,
         custom_fields=custom_fields,
@@ -211,7 +215,25 @@ def update_jira_comment(issue_ref: str, comment_id: str, comment: str) -> dict:
 )
 def update_jira_description(issue_ref: str, description: str) -> dict:
     service: JiraWriteService = load_runtime_write_service()
-    result = service.update_issue_description(issue_ref, description)
+    result = service.update_issue_description(issue_ref, description=description)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="update_jira_description_from_markdown",
+    description="Обновить описание Jira issue из markdown-текста или markdown-файла.",
+)
+def update_jira_description_from_markdown(
+    issue_ref: str,
+    description_markdown: str | None = None,
+    description_markdown_file: str | None = None,
+) -> dict:
+    service: JiraWriteService = load_runtime_write_service()
+    result = service.update_issue_description(
+        issue_ref,
+        description_markdown=description_markdown,
+        description_markdown_file=description_markdown_file,
+    )
     return result.model_dump(mode="json")
 
 

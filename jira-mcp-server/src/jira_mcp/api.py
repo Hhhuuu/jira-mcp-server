@@ -31,6 +31,8 @@ class CreateIssueRequest(BaseModel):
     summary: str
     issue_type: str
     description: Optional[str] = None
+    description_markdown: Optional[str] = None
+    description_markdown_file: Optional[str] = None
     labels: list[str] = Field(default_factory=list)
     parent_issue_key: Optional[str] = None
     custom_fields: Dict[str, Any] = Field(default_factory=dict)
@@ -50,7 +52,9 @@ class UpdateCommentRequest(BaseModel):
 
 class UpdateDescriptionRequest(BaseModel):
     issue_ref: str
-    description: str
+    description: Optional[str] = None
+    description_markdown: Optional[str] = None
+    description_markdown_file: Optional[str] = None
 
 
 class UpdateLabelsRequest(BaseModel):
@@ -298,6 +302,8 @@ def create_issue(request: CreateIssueRequest) -> dict:
             request.summary,
             request.issue_type,
             description=request.description,
+            description_markdown=request.description_markdown,
+            description_markdown_file=request.description_markdown_file,
             labels=request.labels,
             parent_issue_key=request.parent_issue_key,
             custom_fields=request.custom_fields,
@@ -353,7 +359,12 @@ def update_comment(request: UpdateCommentRequest) -> dict:
 def update_description(request: UpdateDescriptionRequest) -> dict:
     try:
         service = load_runtime_write_service()
-        result = service.update_issue_description(request.issue_ref, request.description)
+        result = service.update_issue_description(
+            request.issue_ref,
+            description=request.description,
+            description_markdown=request.description_markdown,
+            description_markdown_file=request.description_markdown_file,
+        )
     except (ConfigFileNotFoundError, InvalidConfigError, InvalidSecretsError, SecretsFileNotFoundError) as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     except JiraAuthenticationError as exc:
