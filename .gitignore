@@ -1,0 +1,14 @@
+.venv/
+.venv-mcp/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+*.egg-info/
+.idea/
+.vscode/
+secrets/jira.yaml
+config/app.yaml

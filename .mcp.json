@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "jira-readonly": {
+      "command": "./scripts/run_mcp.sh"
+    }
+  }
+}

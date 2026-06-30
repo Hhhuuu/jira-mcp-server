@@ -1,0 +1,18 @@
+jira:
+  # Базовый URL Jira.
+  # Для Cloud пример: https://your-domain.atlassian.net
+  # Для Server/Data Center пример: https://jira.example.local
+  base_url: "https://your-domain.atlassian.net"
+
+  # Версия Jira REST API.
+  # Сейчас целимся в read-only сценарии для v2/v3, по умолчанию будет v3.
+  api_version: "3"
+
+  # Тип развертывания Jira.
+  # Допустимые значения:
+  # - cloud
+  # - server
+  deployment: "cloud"
+
+  # Проверять ли SSL-сертификат.
+  verify_ssl: true
