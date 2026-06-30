@@ -20,6 +20,7 @@
 
 - `EXTERNAL_CONSUMERS.md` — документация для внешних потребителей
 - `LOCAL_ENVIRONMENTS.md` — настройка локальных окружений
+- `DOCKER_RUN.md` — запуск решения в Docker
 
 ## Docker
 
