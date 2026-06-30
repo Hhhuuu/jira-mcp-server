@@ -33,3 +33,10 @@ class InvalidConfigError(JiraReadonlyServiceError):
 
 class InvalidSecretsError(JiraReadonlyServiceError):
     """Некорректные секреты Jira."""
+
+
+class SavedFilterNotFoundError(JiraReadonlyServiceError):
+    """Не найден именованный JQL-фильтр."""
+
+    def __init__(self, filter_name: str) -> None:
+        super().__init__(f"Не найден сохранённый фильтр Jira: {filter_name}")

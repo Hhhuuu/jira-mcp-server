@@ -6,10 +6,16 @@ import re
 from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse, parse_qs
 
-from jira_client import JiraClient, JiraClientConfig, JiraIssueResponse, JiraUserRef
+from jira_client import JiraClient, JiraClientConfig, JiraIssueResponse, JiraProjectRef, JiraSearchResponse, JiraUserRef
 
-from .config import AppConfig
-from .dto import JiraCurrentUserResult, JiraIssueResult
+from .config import AppConfig, JiraSavedFilterConfig, get_saved_filter
+from .dto import (
+    JiraCurrentUserResult,
+    JiraIssueResult,
+    JiraProjectResult,
+    JiraSavedFilterResult,
+    JiraSearchResult,
+)
 from .secrets import JiraSecrets
 
 
@@ -62,6 +68,83 @@ class JiraReadonlyService:
             text=format_current_user(simplified),
         )
 
+    def get_project(self, project_key: str) -> JiraProjectResult:
+        response = self._client.get_project(project_key)
+        simplified = simplify_project(response)
+        return JiraProjectResult(
+            project=simplified,
+            text=format_project(simplified),
+        )
+
+    def search_issues_by_jql(
+        self,
+        jql: str,
+        *,
+        max_results: int = 20,
+        start_at: int = 0,
+    ) -> JiraSearchResult:
+        response = self._client.search_issues(jql, max_results=max_results, start_at=start_at)
+        return build_search_result(
+            response,
+            jql=jql,
+            max_results=max_results,
+            start_at=start_at,
+        )
+
+
+class JiraFilterService:
+    """Сервис управления локальными сохранёнными JQL-фильтрами."""
+
+    def __init__(self, app_config: AppConfig) -> None:
+        self._app_config = app_config
+
+    def list_saved_filters(self) -> List[JiraSavedFilterResult]:
+        return [
+            JiraSavedFilterResult(
+                name=name,
+                description=filter_config.description,
+                jql=filter_config.jql,
+                jql_template=filter_config.jql_template,
+                year_field=filter_config.year_field,
+            )
+            for name, filter_config in self._app_config.jira.filters.items()
+        ]
+
+    def resolve_saved_filter_jql(self, filter_name: str, year: Optional[int] = None) -> str:
+        filter_config = get_saved_filter(self._app_config, filter_name)
+        return resolve_saved_filter_jql(filter_config, year=year)
+
+    def upsert_saved_filter(
+        self,
+        filter_name: str,
+        *,
+        description: Optional[str] = None,
+        jql: Optional[str] = None,
+        jql_template: Optional[str] = None,
+        year_field: str = "created",
+    ) -> JiraSavedFilterResult:
+        if not jql and not jql_template:
+            raise ValueError("Нужно передать jql или jql_template.")
+
+        filter_config = JiraSavedFilterConfig(
+            description=description,
+            jql=jql,
+            jql_template=jql_template,
+            year_field=year_field,
+        )
+        self._app_config.jira.filters[filter_name] = filter_config
+        return JiraSavedFilterResult(
+            name=filter_name,
+            description=filter_config.description,
+            jql=filter_config.jql,
+            jql_template=filter_config.jql_template,
+            year_field=filter_config.year_field,
+        )
+
+    def delete_saved_filter(self, filter_name: str) -> None:
+        get_saved_filter(self._app_config, filter_name)
+        del self._app_config.jira.filters[filter_name]
+
 
 def normalize_issue_ref(value: str) -> str:
     """Нормализовать issue key/id или Jira URL."""
@@ -94,7 +177,7 @@ def simplify_issue(
         "id": issue.id,
         "key": issue.key,
         "self": issue.self,
-        "summary": fields.summary,
+        "summary": normalize_text(fields.summary),
         "issueType": pick_name(fields.issuetype),
         "status": pick_name(fields.status),
         "priority": pick_name(fields.priority),
@@ -116,11 +199,11 @@ def simplify_issue(
         "parent": {
             "id": fields.parent.id,
             "key": fields.parent.key,
-            "summary": fields.parent.fields.summary if fields.parent and fields.parent.fields else None,
+            "summary": normalize_text(fields.parent.fields.summary) if fields.parent and fields.parent.fields else None,
         }
         if fields.parent
         else None,
-        "description": adf_to_text(fields.description),
+        "description": normalize_text(adf_to_text(fields.description)),
     }
 
     if include_comments:
@@ -144,6 +227,16 @@ def simplify_current_user(user: JiraUserRef) -> Dict[str, Any]:
         "displayName": user.display_name,
         "emailAddress": user.email_address,
         "active": user.active,
+    }
+
+
+def simplify_project(project: JiraProjectRef) -> Dict[str, Any]:
+    return {
+        "id": project.id,
+        "key": project.key,
+        "name": project.name,
+        "projectTypeKey": project.project_type_key,
+        "simplified": project.simplified,
     }
 
 
@@ -198,7 +291,8 @@ def visit_adf(node: Any, parts: List[str]) -> None:
 
 def strip_html(value: str) -> str:
     normalized = (
-        value.replace("&nbsp;", " ")
+        value.replace("\xa0", " ")
+        .replace("&nbsp;", " ")
         .replace("&amp;", "&")
         .replace("&lt;", "<")
         .replace("&gt;", ">")
@@ -261,3 +355,84 @@ def format_current_user(user: Dict[str, Any]) -> str:
         f"Active: {user.get('active') if user.get('active') is not None else 'Unknown'}",
     ]
     return "\n".join(lines)
+
+
+def format_project(project: Dict[str, Any]) -> str:
+    lines = [
+        f"Project: {project.get('key') or 'Unknown'}",
+        f"Name: {project.get('name') or 'Unknown'}",
+        f"ID: {project.get('id') or 'Unknown'}",
+        f"Type: {project.get('projectTypeKey') or 'Unknown'}",
+        f"Simplified: {project.get('simplified') if project.get('simplified') is not None else 'Unknown'}",
+    ]
+    return "\n".join(lines)
+
+
+def build_search_result(
+    response: JiraSearchResponse,
+    *,
+    jql: str,
+    max_results: int,
+    start_at: int,
+) -> JiraSearchResult:
+    issues = [simplify_issue(issue, include_comments=False, max_comments=0) for issue in response.issues]
+    return JiraSearchResult(
+        jql=jql,
+        total=response.total if response.total else len(issues),
+        start_at=response.start_at if response.start_at is not None else start_at,
+        max_results=response.max_results if response.max_results else max_results,
+        issues=issues,
+        text=format_search_result(issues, response.total if response.total else len(issues), jql=jql),
+    )
+
+
+def format_search_result(issues: List[Dict[str, Any]], total: int, *, jql: str) -> str:
+    lines = [
+        f"JQL: {jql}",
+        f"Total: {total}",
+        "",
+    ]
+    if not issues:
+        lines.append("Ничего не найдено.")
+        return "\n".join(lines)
+
+    for issue in issues:
+        lines.append(
+            f"- {issue.get('key')}: {normalize_text(issue.get('summary')) or 'No summary'}"
+            f" [{issue.get('status') or 'Unknown'}]"
+        )
+    return "\n".join(lines)
+
+
+def resolve_saved_filter_jql(filter_config: JiraSavedFilterConfig, *, year: Optional[int] = None) -> str:
+    if filter_config.jql_template:
+        return filter_config.jql_template.format(
+            year=year,
+            next_year=(year + 1) if year is not None else None,
+        )
+
+    base_jql = filter_config.jql or ""
+    if year is None:
+        return base_jql
+
+    year_field = filter_config.year_field or "created"
+    year_clause = (
+        f'{year_field} >= "{year}-01-01" AND {year_field} < "{year + 1}-01-01"'
+    )
+    if not base_jql:
+        return year_clause
+
+    order_by_match = re.search(r"\bORDER\s+BY\b", base_jql, flags=re.IGNORECASE)
+    if not order_by_match:
+        return f"({base_jql}) AND {year_clause}"
+
+    order_by_index = order_by_match.start()
+    base_without_order = base_jql[:order_by_index].rstrip()
+    order_by_part = base_jql[order_by_index:].lstrip()
+    return f"({base_without_order}) AND {year_clause} {order_by_part}".strip()
+
+
+def normalize_text(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    return value.replace("\xa0", " ").strip()

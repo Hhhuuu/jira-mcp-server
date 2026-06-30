@@ -22,3 +22,31 @@ class JiraCurrentUserResult(BaseModel):
 
     user: Dict[str, Any]
     text: str
+
+
+class JiraProjectResult(BaseModel):
+    """Результат получения Jira project."""
+
+    project: Dict[str, Any]
+    text: str
+
+
+class JiraSearchResult(BaseModel):
+    """Результат JQL-поиска."""
+
+    jql: str
+    total: int
+    start_at: int = 0
+    max_results: int = 20
+    issues: List[Dict[str, Any]]
+    text: str
+
+
+class JiraSavedFilterResult(BaseModel):
+    """Описание сохранённого фильтра."""
+
+    name: str
+    description: Optional[str] = None
+    jql: Optional[str] = None
+    jql_template: Optional[str] = None
+    year_field: str = "created"

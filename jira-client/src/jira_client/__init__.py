@@ -7,7 +7,7 @@ from .exceptions import (
     JiraIssueNotFoundError,
     JiraRequestError,
 )
-from .models import JiraIssueResponse, JiraUserRef
+from .models import JiraIssueResponse, JiraProjectRef, JiraSearchResponse, JiraUserRef
 
 __all__ = [
     "JiraAuthenticationError",
@@ -16,6 +16,8 @@ __all__ = [
     "JiraClientError",
     "JiraIssueNotFoundError",
     "JiraIssueResponse",
+    "JiraProjectRef",
     "JiraRequestError",
+    "JiraSearchResponse",
     "JiraUserRef",
 ]

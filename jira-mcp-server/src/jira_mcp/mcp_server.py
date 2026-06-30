@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from jira_readonly_service import JiraReadonlyService
+from jira_readonly_service import JiraFilterService, JiraReadonlyService, load_app_config, save_app_config
 from mcp.server.fastmcp import FastMCP
 
 from .runtime import load_runtime_service, resolve_config_path, resolve_secrets_path
@@ -45,6 +45,93 @@ def get_jira_issue(issue_key: str, include_comments: bool = False, max_comments:
         issue_key,
         include_comments=include_comments,
         max_comments=max_comments,
+    )
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="get_jira_project",
+    description="Прочитать информацию о Jira project по ключу.",
+)
+def get_jira_project(project_key: str) -> dict:
+    service: JiraReadonlyService = load_runtime_service()
+    result = service.get_project(project_key)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="search_jira_issues",
+    description="Выполнить JQL-поиск задач Jira в read-only режиме.",
+)
+def search_jira_issues(jql: str, max_results: int = 20, start_at: int = 0) -> dict:
+    service: JiraReadonlyService = load_runtime_service()
+    result = service.search_issues_by_jql(
+        jql,
+        max_results=max_results,
+        start_at=start_at,
+    )
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="list_saved_jql_filters",
+    description="Показать локально сохранённые именованные JQL-фильтры из config/app.yaml.",
+)
+def list_saved_jql_filters() -> dict:
+    config = load_app_config(resolve_config_path())
+    filters = JiraFilterService(config).list_saved_filters()
+    return {"filters": [item.model_dump(mode="json") for item in filters]}
+
+
+@mcp.tool(
+    name="save_jql_filter",
+    description="Сохранить или обновить локальный именованный JQL-фильтр в config/app.yaml.",
+)
+def save_jql_filter(
+    filter_name: str,
+    description: str | None = None,
+    jql: str | None = None,
+    jql_template: str | None = None,
+    year_field: str = "created",
+) -> dict:
+    config = load_app_config(resolve_config_path())
+    filter_service = JiraFilterService(config)
+    result = filter_service.upsert_saved_filter(
+        filter_name,
+        description=description,
+        jql=jql,
+        jql_template=jql_template,
+        year_field=year_field,
+    )
+    save_app_config(resolve_config_path(), config)
+    return result.model_dump(mode="json")
+
+
+@mcp.tool(
+    name="delete_jql_filter",
+    description="Удалить локальный именованный JQL-фильтр из config/app.yaml.",
+)
+def delete_jql_filter(filter_name: str) -> dict:
+    config = load_app_config(resolve_config_path())
+    filter_service = JiraFilterService(config)
+    filter_service.delete_saved_filter(filter_name)
+    save_app_config(resolve_config_path(), config)
+    return {"deleted": filter_name}
+
+
+@mcp.tool(
+    name="search_jira_by_saved_filter",
+    description="Выполнить поиск задач по локально сохранённому именованному JQL-фильтру, при необходимости ограничив результаты по году.",
+)
+def search_jira_by_saved_filter(filter_name: str, year: int | None = None, max_results: int = 20, start_at: int = 0) -> dict:
+    config = load_app_config(resolve_config_path())
+    filter_service = JiraFilterService(config)
+    jql = filter_service.resolve_saved_filter_jql(filter_name, year=year)
+    service: JiraReadonlyService = load_runtime_service()
+    result = service.search_issues_by_jql(
+        jql,
+        max_results=max_results,
+        start_at=start_at,
     )
     return result.model_dump(mode="json")
 

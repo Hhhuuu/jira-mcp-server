@@ -14,7 +14,7 @@ from .exceptions import (
     JiraIssueNotFoundError,
     JiraRequestError,
 )
-from .models import JiraErrorResponse, JiraIssueResponse, JiraUserRef
+from .models import JiraErrorResponse, JiraIssueResponse, JiraProjectRef, JiraSearchResponse, JiraUserRef
 
 DEFAULT_FIELDS = ",".join(
     [
@@ -119,6 +119,46 @@ class JiraClient:
             f"/rest/api/{self._config.api_version}/myself",
         )
         return JiraUserRef.model_validate(response.json())
+
+    def get_project(self, project_key: str) -> JiraProjectRef:
+        """
+        Получить проект Jira по ключу.
+        """
+
+        response = self._request(
+            "GET",
+            f"/rest/api/{self._config.api_version}/project/{quote(project_key, safe='')}",
+        )
+        return JiraProjectRef.model_validate(response.json())
+
+    def search_issues(
+        self,
+        jql: str,
+        *,
+        max_results: int = 20,
+        start_at: int = 0,
+    ) -> JiraSearchResponse:
+        """
+        Выполнить JQL поиск задач.
+        """
+
+        params: Dict[str, Any] = {
+            "jql": jql,
+            "fields": DEFAULT_FIELDS,
+            "expand": "renderedFields,names",
+            "maxResults": max_results,
+            "startAt": start_at,
+            "fieldsByKeys": "true",
+        }
+
+        search_path = (
+            f"/rest/api/{self._config.api_version}/search/jql"
+            if self._config.deployment == "cloud"
+            else f"/rest/api/{self._config.api_version}/search"
+        )
+
+        response = self._request("GET", search_path, params=params)
+        return JiraSearchResponse.model_validate(response.json())
 
     def close(self) -> None:
         self._client.close()

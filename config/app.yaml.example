@@ -16,3 +16,24 @@ jira:
 
   # Проверять ли SSL-сертификат.
   verify_ssl: true
+
+  # Локально сохранённые именованные JQL-фильтры.
+  # Ими можно управлять через HTTP API или MCP tools.
+  filters:
+    my_team:
+      # Свободное описание фильтра.
+      description: "Задачи моей команды"
+
+      # Базовый JQL.
+      # Если при вызове будет передан year, сервис добавит ограничение
+      # по полю year_field, например created за нужный год.
+      jql: 'project = KAN ORDER BY updated DESC'
+
+      # Поле Jira, по которому добавляется ограничение за год.
+      year_field: "created"
+
+    my_team_by_year:
+      description: "Задачи моей команды за выбранный год"
+
+      # Шаблон JQL с параметрами {year} и {next_year}.
+      jql_template: 'project = KAN AND created >= "{year}-01-01" AND created < "{next_year}-01-01" ORDER BY updated DESC'

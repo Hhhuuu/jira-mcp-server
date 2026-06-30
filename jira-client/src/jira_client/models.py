@@ -31,8 +31,11 @@ class JiraNamedValue(JiraModel):
 class JiraProjectRef(JiraModel):
     """Ссылка на проект Jira."""
 
+    id: Optional[str] = None
     key: Optional[str] = None
     name: Optional[str] = None
+    project_type_key: Optional[str] = Field(default=None, alias="projectTypeKey")
+    simplified: Optional[bool] = None
 
 
 class JiraParentFields(JiraModel):
@@ -101,6 +104,15 @@ class JiraIssueResponse(JiraModel):
     key: str
     self: str
     fields: JiraFields = Field(default_factory=JiraFields)
+
+
+class JiraSearchResponse(JiraModel):
+    """Ответ Jira search API."""
+
+    issues: List[JiraIssueResponse] = Field(default_factory=list)
+    total: int = 0
+    start_at: int = Field(default=0, alias="startAt")
+    max_results: int = Field(default=0, alias="maxResults")
 
 
 class JiraErrorResponse(JiraModel):

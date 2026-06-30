@@ -1,21 +1,37 @@
 """Read-only сервис поверх Jira REST API."""
 
-from .config import AppConfig, JiraAppConfig, load_app_config
-from .dto import JiraCurrentUserResult, JiraIssueResult
+from .config import (
+    AppConfig,
+    JiraAppConfig,
+    JiraSavedFilterConfig,
+    get_saved_filter,
+    list_saved_filters,
+    load_app_config,
+    save_app_config,
+)
+from .dto import JiraCurrentUserResult, JiraIssueResult, JiraProjectResult, JiraSavedFilterResult, JiraSearchResult
 from .exceptions import (
     ConfigFileNotFoundError,
     InvalidConfigError,
     InvalidSecretsError,
     JiraReadonlyServiceError,
+    SavedFilterNotFoundError,
     SecretsFileNotFoundError,
 )
 from .secrets import JiraSecrets, load_secrets
 from .service import (
+    JiraFilterService,
     JiraReadonlyService,
+    build_search_result,
     format_current_user,
     format_issue,
+    format_project,
+    format_search_result,
     normalize_issue_ref,
+    normalize_text,
+    resolve_saved_filter_jql,
     simplify_current_user,
+    simplify_project,
     simplify_issue,
 )
 
@@ -27,15 +43,30 @@ __all__ = [
     "InvalidSecretsError",
     "JiraCurrentUserResult",
     "JiraAppConfig",
+    "JiraFilterService",
     "JiraIssueResult",
+    "JiraProjectResult",
     "JiraReadonlyService",
     "JiraReadonlyServiceError",
+    "JiraSavedFilterConfig",
+    "JiraSavedFilterResult",
+    "JiraSearchResult",
     "JiraSecrets",
+    "SavedFilterNotFoundError",
     "SecretsFileNotFoundError",
+    "build_search_result",
     "format_issue",
+    "format_project",
+    "format_search_result",
+    "get_saved_filter",
+    "list_saved_filters",
     "load_app_config",
     "load_secrets",
     "normalize_issue_ref",
+    "normalize_text",
+    "resolve_saved_filter_jql",
+    "save_app_config",
     "simplify_current_user",
+    "simplify_project",
     "simplify_issue",
 ]
